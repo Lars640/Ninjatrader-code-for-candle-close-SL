@@ -1,0 +1,72 @@
+#region Using declarations
+using System;
+using NinjaTrader.Cbi;
+using NinjaTrader.Gui.Tools;
+using NinjaTrader.NinjaScript;
+using NinjaTrader.Data;
+using NinjaTrader.NinjaScript.StrategyAnalyzer;
+using NinjaTrader.NinjaScript.Strategies;
+using NinjaTrader.NinjaScript.Strategy;
+#endregion
+
+namespace NinjaTrader.NinjaScript.Strategies
+{
+    public class StopLossOnLevelBreak : Strategy
+    {
+        // Parameters
+        private double stopLevel;
+
+        protected override void OnStateChange()
+        {
+            if (State == State.SetDefaults)
+            {
+                Description                                 = @"Strategy that triggers a stop loss when a 15-minute candle closes under or over a predefined level.";
+                Name                                        = "StopLossOnLevelBreak";
+                Calculate                                   = Calculate.OnEachTick;
+                IsInstantiatedOnEachOptimizationIteration   = true;
+                stopLevel                                   = 4000.0; // Set this to your desired level
+            }
+            else if (State == State.Configure)
+            {
+                // Add a 15-minute timeframe to the strategy
+                AddDataSeries(Data.BarsPeriodType.Minute, 15);
+            }
+        }
+
+        protected override void OnBarUpdate()
+        {
+            // Ensure we're processing the 15-minute timeframe
+            if (BarsInProgress != 1)
+                return;
+
+            // Check if there is an active position
+            if (Position.MarketPosition == MarketPosition.Long)
+            {
+                // If long, check if the 15-min candle closes below the stop level
+                if (Closes[1][0] < stopLevel)
+                {
+                    ExitLong("StopLoss", "Long");
+                }
+            }
+            else if (Position.MarketPosition == MarketPosition.Short)
+            {
+                // If short, check if the 15-min candle closes above the stop level
+                if (Closes[1][0] > stopLevel)
+                {
+                    ExitShort("StopLoss", "Short");
+                }
+            }
+        }
+
+        #region Properties
+        [NinjaScriptProperty]
+        [Range(1, double.MaxValue)]
+        [Display(Name = "Stop Level", Order = 1, GroupName = "Parameters")]
+        public double StopLevel
+        {
+            get { return stopLevel; }
+            set { stopLevel = value; }
+        }
+        #endregion
+    }
+}
